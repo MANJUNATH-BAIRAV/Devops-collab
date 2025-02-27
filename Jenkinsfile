@@ -2,63 +2,74 @@ pipeline {
     agent any
 
     environment {
-        GIT_CREDENTIALS_ID = 'your-credential-id'  // Replace with your Jenkins credentials ID
-        DOCKER_IMAGE = 'devops-collab:latest'
+        GIT_CREDENTIALS_ID = 'git-credentials'  // Make sure this matches the ID in Jenkins Credentials
+        IMAGE_NAME = 'devops-collab-app'
+        DOCKER_HUB_USER = 'your-docker-hub-username'  // Replace with your DockerHub username
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS_ID}", usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
-                    sh 'git clone https://${GIT_USER}:${GIT_PASS}@github.com/MANJUNATH-BAIRAV/Devops-collab.git'
+                script {
+                    checkout([$class: 'GitSCM', 
+                        branches: [[name: '*/main']], 
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/MANJUNATH-BAIRAV/Devops-collab.git',
+                            credentialsId: "${GIT_CREDENTIALS_ID}"
+                        ]]
+                    ])
                 }
             }
         }
 
         stage('Build Maven Project') {
             steps {
-                sh 'mvn clean package'
+                script {
+                    sh 'mvn clean package'
+                }
             }
         }
 
         stage('Run Unit Tests') {
             steps {
-                sh 'mvn test'
+                script {
+                    sh 'mvn test'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${DOCKER_IMAGE} .'
+                script {
+                    sh "docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest ."
+                }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin'
-                    sh 'docker tag ${DOCKER_IMAGE} ${DOCKER_USER}/${DOCKER_IMAGE}'
-                    sh 'docker push ${DOCKER_USER}/${DOCKER_IMAGE}'
+                script {
+                    sh "echo '${DOCKER_HUB_PASSWORD}' | docker login -u '${DOCKER_HUB_USER}' --password-stdin"
+                    sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
                 }
             }
         }
 
         stage('Deploy Container') {
             steps {
-                sh 'docker run -d -p 8080:8080 ${DOCKER_IMAGE}'
+                script {
+                    sh "docker run -d -p 8080:8080 --name devops-container ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
+                }
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline Execution Completed'
-        }
         success {
-            echo 'Pipeline executed successfully!'
+            echo "Pipeline execution completed successfully!"
         }
         failure {
-            echo 'Pipeline failed. Check logs for details.'
+            echo "Pipeline failed. Check logs for details."
         }
     }
 }
