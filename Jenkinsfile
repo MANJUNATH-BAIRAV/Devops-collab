@@ -1,30 +1,64 @@
 pipeline {
     agent any
+
+    environment {
+        GIT_CREDENTIALS_ID = 'your-credential-id'  // Replace with your Jenkins credentials ID
+        DOCKER_IMAGE = 'devops-collab:latest'
+    }
+
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                bat 'git clone https://github.com/MANJUNATH-BAIRAV/Devops-collab.git'
+                withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS_ID}", usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+                    sh 'git clone https://${GIT_USER}:${GIT_PASS}@github.com/MANJUNATH-BAIRAV/Devops-collab.git'
+                }
             }
         }
-        stage('Build') {
+
+        stage('Build Maven Project') {
             steps {
-                bat 'mvn clean package'
+                sh 'mvn clean package'
             }
         }
-        stage('Test') {
+
+        stage('Run Unit Tests') {
             steps {
-                bat 'mvn test'
+                sh 'mvn test'
             }
         }
-        stage('Docker Build') {
+
+        stage('Build Docker Image') {
             steps {
-                bat 'docker build -t devops-collab-image .'
+                sh 'docker build -t ${DOCKER_IMAGE} .'
             }
         }
-        stage('Docker Run') {
+
+        stage('Push Docker Image') {
             steps {
-                bat 'docker run -d -p 8080:8080 devops-collab-image'
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin'
+                    sh 'docker tag ${DOCKER_IMAGE} ${DOCKER_USER}/${DOCKER_IMAGE}'
+                    sh 'docker push ${DOCKER_USER}/${DOCKER_IMAGE}'
+                }
             }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh 'docker run -d -p 8080:8080 ${DOCKER_IMAGE}'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline Execution Completed'
+        }
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
