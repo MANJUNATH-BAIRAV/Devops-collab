@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'devops-collab-app'
-        DOCKER_HUB_USER = 'your-docker-hub-username' // Update this
+        DOCKER_HUB_USER = 'manjunathbairav1'// Update this
     }
 
     stages {
