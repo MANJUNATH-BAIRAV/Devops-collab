@@ -1,25 +1,62 @@
 pipeline {
     agent any
+
+    environment {
+        IMAGE_NAME = 'devops-collab-app'
+        DOCKER_HUB_USER = 'manjunathbairav1'// Update this
+    }
+
     stages {
-        stage('Checkout') {
+        // Remove explicit "Clone Repository" stage - Jenkins automatically checks out SCM
+
+        stage('Build Maven Project') {
             steps {
-                checkout scm
+                script {
+                    sh 'mvn clean package'
+                }
             }
         }
-        stage('Build') {
+
+        stage('Run Unit Tests') {
             steps {
-                sh 'mvn clean package'
+                script {
+                    sh 'mvn test' // Runs both compile and tests
+                }
             }
         }
-        stage('Test') {
+
+        stage('Build Docker Image') {
             steps {
-                sh 'mvn test'
+                script {
+                    sh "docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest ."
+                }
             }
         }
-        stage('Docker Build') {
-            steps {
-                sh 'docker build -t devops-collab:latest .'
+
+        stage('Push Docker Image') {
+            environment {
+                DOCKER_HUB_PASSWORD = credentials('docker-hub-credentials') // Add credentials in Jenkins
             }
+            steps {
+                script {
+                    sh "echo '${DOCKER_HUB_PASSWORD}' | docker login -u '${DOCKER_HUB_USER}' --password-stdin"
+                    sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
+                }
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                script {
+                    sh "docker run -d -p 8080:8080 --name devops-container ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs() // Clean workspace after build
         }
     }
 }
