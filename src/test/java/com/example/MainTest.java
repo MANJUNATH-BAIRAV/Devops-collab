@@ -1,28 +1,19 @@
 package com.example;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.assertEquals;
+import org.junit.Before;
+import org.junit.Test;
 
-import org.junit.jupiter.api.Test;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+public class MainTest {
+    private Main main;
 
-class MainTest {
+    @Before // This runs before each test
+    public void setUp() {
+        main = new Main();
+    }
 
     @Test
-    void testMainOutput() {
-        // Capture system output
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        System.setOut(new PrintStream(outputStream));
-
-        // Run main method
-        Main.main(new String[]{});
-
-        // Restore system output
-        System.setOut(originalOut);
-
-        // Verify output
-        String expectedOutput = "Hello, World!" + System.lineSeparator();
-        assertEquals(expectedOutput, outputStream.toString(), "Main method output should match");
+    public void testGreet() {
+        assertEquals("Hello, Jenkins!", main.greet());
     }
 }
