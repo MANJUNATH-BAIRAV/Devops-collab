@@ -2,25 +2,12 @@ pipeline {
     agent any
 
     environment {
-        GIT_CREDENTIALS_ID = 'git-credentials'  // Make sure this matches the ID in Jenkins Credentials
         IMAGE_NAME = 'devops-collab-app'
-        DOCKER_HUB_USER = 'your-docker-hub-username'  // Replace with your DockerHub username
+        DOCKER_HUB_USER = 'your-docker-hub-username' // Update this
     }
 
     stages {
-        stage('Clone Repository') {
-            steps {
-                script {
-                    checkout([$class: 'GitSCM', 
-                        branches: [[name: '*/main']], 
-                        userRemoteConfigs: [[
-                            url: 'https://github.com/MANJUNATH-BAIRAV/Devops-collab.git',
-                            credentialsId: "${GIT_CREDENTIALS_ID}"
-                        ]]
-                    ])
-                }
-            }
-        }
+        // Remove explicit "Clone Repository" stage - Jenkins automatically checks out SCM
 
         stage('Build Maven Project') {
             steps {
@@ -33,7 +20,7 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 script {
-                    sh 'mvn test'
+                    sh 'mvn test' // Runs both compile and tests
                 }
             }
         }
@@ -47,6 +34,9 @@ pipeline {
         }
 
         stage('Push Docker Image') {
+            environment {
+                DOCKER_HUB_PASSWORD = credentials('docker-hub-credentials') // Add credentials in Jenkins
+            }
             steps {
                 script {
                     sh "echo '${DOCKER_HUB_PASSWORD}' | docker login -u '${DOCKER_HUB_USER}' --password-stdin"
@@ -65,11 +55,8 @@ pipeline {
     }
 
     post {
-        success {
-            echo "Pipeline execution completed successfully!"
-        }
-        failure {
-            echo "Pipeline failed. Check logs for details."
+        always {
+            cleanWs() // Clean workspace after build
         }
     }
 }
