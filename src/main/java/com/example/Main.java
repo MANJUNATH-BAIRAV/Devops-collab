@@ -1,3 +1,4 @@
+package com.example; 
 public class Main {
     public String greet() {
         System.out.println("Hello, Jenkins!");
